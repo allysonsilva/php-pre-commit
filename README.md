@@ -57,4 +57,4 @@ It will assume that there is a valid PHP Code Sniffer executable at these locati
 
 ## License
 
-[MIT License](github.com/AllysonSilva/php-pre-commit/blob/master/LICENSE)
+[MIT License](https://github.com/AllysonSilva/php-pre-commit/blob/master/LICENSE)
