@@ -1,0 +1,448 @@
+#!/bin/sh
+
+##########
+# Git Pre-Commit file for PHP projects.
+###
+#
+# This hook performs the following validation:
+#   - PHP Lint (http://php.net/manual/en/features.commandline.options.php)
+#   - PHP CodeSniffer (PHPCS + (PHPCBF) (https://github.com/squizlabs/PHP_CodeSniffer)
+#   - PHP Coding Standards Fixer (PHP CS Fixer) (https://github.com/FriendsOfPHP/PHP-CS-Fixer)
+#   - PHP Mess Detector (PHPMD) (https://phpmd.org/)
+#   - PHP Copy/Paste Detector (PHPCPD) (https://github.com/sebastianbergmann/phpcpd)
+#
+# @version 1.0.0
+# @author Allyson Silva <contato@allyson.tech>
+##########
+
+    cat <<\EOF
+
+    ____                                                 _ __
+   / __ \________        _________  ____ ___  ____ ___  (_) /_
+  / /_/ / ___/ _ \______/ ___/ __ \/ __ `__ \/ __ `__ \/ / __/
+ / ____/ /  /  __/_____/ /__/ /_/ / / / / / / / / / / / / /_
+/_/   /_/   \___/      \___/\____/_/ /_/ /_/_/ /_/ /_/_/\__/
+EOF
+
+echo
+
+if git rev-parse --verify HEAD >/dev/null 2>&1
+then
+    against=HEAD
+else
+    # Initial commit: diff against an empty tree object
+    against=4b825dc642cb6eb9a060e54bf8d69288fbee4904
+fi
+
+# If you want to allow non-ASCII filenames set this variable to true.
+allownonascii=$(git config --bool hooks.allownonascii)
+
+# Redirect output to stderr.
+exec 1>&2
+
+# Cross platform projects tend to avoid non-ASCII filenames; prevent
+# them from being added to the repository. We exploit the fact that the
+# printable range starts at the space character and ends with tilde.
+if [ "$allownonascii" != "true" ] &&
+    # Note that the use of brackets around a tr range is ok here, (it's
+    # even required, for portability to Solaris 10's /usr/bin/tr), since
+    # the square bracket bytes happen to fall in the designated range.
+    test $(git diff --cached --name-only --diff-filter=A -z $against |
+      LC_ALL=C tr -d '[ -~]\0' | wc -c) != 0
+then
+    cat <<\EOF
+Error: Attempt to add a non-ASCII file name.
+
+This can cause problems if you want to work with people on other platforms.
+
+To be portable it is advisable to rename the file.
+
+If you know what you are doing you can disable this check using:
+
+  git config hooks.allownonascii true
+EOF
+    exit 1
+fi
+
+# If there are whitespace errors, print the offending file names and fail.
+# exec git diff-index --check --cached $against --
+
+#################
+# Terminal Colors
+#################
+
+###
+# Regular
+###
+color_regular_black='\033[0;30m'
+color_regular_red='\033[0;31m'
+color_regular_green='\033[0;32m'
+color_regular_yellow='\033[0;33m'
+color_regular_blue='\033[0;34m'
+color_regular_purple='\033[0;35m'
+color_regular_cyan='\033[0;36m'
+color_regular_white='\033[0;37m'
+
+###
+# Bold
+###
+color_bold_black='\033[1;30m'
+color_bold_red='\033[1;31m'
+color_bold_green='\033[1;32m'
+color_bold_yellow='\033[1;33m'
+color_bold_blue='\033[1;34m'
+color_bold_purple='\033[1;35m'
+color_bold_cyan='\033[1;36m'
+color_bold_white='\033[1;37m'
+
+###
+# Underline
+###
+color_underline_black='\033[4;30m'
+color_underline_red='\033[4;31m'
+color_underline_green='\033[4;32m'
+color_underline_yellow='\033[4;33m'
+color_underline_blue='\033[4;34m'
+color_underline_purple='\033[4;35m'
+color_underline_cyan='\033[4;36m'
+color_underline_white='\033[4;37m'
+
+###
+# Background
+###
+color_background_black='\033[40m'
+color_background_red='\033[41m'
+color_background_green='\033[42m'
+color_background_yellow='\033[43m'
+color_background_blue='\033[44m'
+color_background_purple='\033[45m'
+color_background_cyan='\033[46m'
+color_background_white='\033[47m'
+
+color_reset='\033[0m'
+
+###########
+# Functions
+###########
+
+function message_failure() {
+    echo "${color_bold_white}${color_background_red} 🤦  $1 ${color_reset}\n"
+}
+
+function message_success() {
+    echo "${color_bold_black}${color_background_green} $1 🍺  ${color_reset}\n"
+}
+
+function message_warning() {
+    echo "${color_bold_black}${color_background_yellow} ☹  $1 ${color_reset}\n"
+}
+
+function message_info() {
+    echo "${color_bold_black}${color_background_blue} ☝️️  $1 ${color_reset}\n"
+}
+
+######################
+# Checking PHP Project
+######################
+
+# Exit 0 if no errors found
+# Exit 1 if errors were found
+
+# Create empty errors array.
+declare -a errors
+
+# Fetch all changed php files and validate them.
+# This will check only staged files to be commited.
+files=$(git diff --cached --name-only --diff-filter=ACM $against | grep '\.php$' | grep -Ev '\.(blade.php|txt)$' | grep -Ev '(_ide_helper.php)$')
+
+# Project Folder.
+project=$(git rev-parse --show-toplevel)
+
+# Apenas caminhos e nomes dos arquivos: /path/file.php,/foo/file.php,/bar/file.php
+for relative_file_path in $files
+do
+    staged_files="$staged_files $(git rev-parse --show-toplevel)/$relative_file_path"
+    # file_name=$(basename "$relative_file_path")
+    # file_entension=${file_name##*.}
+done
+
+# Replace first blank only
+staged_files=${staged_files/ /''}
+
+# Separated by spaces
+staged_files_separated_by_spaces=$staged_files
+
+# Remove blank spaces with comma
+# Separated by commas
+staged_files_separated_by_comma=${staged_files// /,}
+
+if [ -n "$files" ]; then
+
+    echo "╭──────────────────────────────────╮"
+    echo "|〈〈〈 ${color_bold_white}Checking PHP Lint...${color_reset} 〉〉〉|"
+    echo "╰──────────────────────────────────╯"
+    echo
+
+    # Check for errors when running PHP LINT.
+    php_lint_errors=false
+
+    for file in $files; do
+
+        # Check if they are valid php files.
+        php_lint_output=`php -l -d display_errors=On $file 2>&1 | grep 'PHP Parse error:'`
+
+        # If it did contain errors, we have output.
+        if [ -n "$php_lint_output" ]; then
+            # Printing error message.
+            message_failure "$php_lint_output"
+
+            # Adding error message.
+            errors=("${errors[@]}" "$php_lint_output")
+
+            php_lint_errors=true
+        fi
+    done
+
+    if [ "$php_lint_errors" = false ]; then
+        message_success 'No Errors Found - PHP Lint(Syntax check only)'
+    else
+        exit 1
+    fi
+
+    echo "╭────────────────────────────────────────────────────────────────────────────────╮"
+    echo "|〈〈〈 ${color_bold_white}Running PHP CodeSniffer + PHP Code Beautifier. Code standard PSR2.${color_reset} 〉〉〉|"
+    echo "╰────────────────────────────────────────────────────────────────────────────────╯"
+    echo
+
+    # PHP CodeSniffer default execution file.
+    #
+    # curl -OL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar
+    phpcs_local_bin="phpcs.phar"
+
+    # Default command to run PHP CodeSniffer.
+    phpcs_bin="php $phpcs_local_bin"
+
+    # Default command via install local project package with Composer (Depot Manager for PHP).
+    phpcs_vendor_bin="vendor/bin/phpcs"
+
+    # Standard command via composer global installation.
+    phpcs_global_bin="phpcs"
+
+    # Verifying command default based on existing conditions.
+    if [ -f "$phpcs_vendor_bin" ]; then
+        phpcs_bin=$phpcs_vendor_bin
+    else
+        if hash phpcs 2>/dev/null; then
+            phpcs_bin=$phpcs_global_bin
+        else
+            if [ -f "$phpcs_local_exec" ]; then
+                phpcs_bin=$phpcs_bin
+            else
+                message_warning "No valid PHP Codesniffer executable found! Please have one available as either $phpcs_vendor_bin, $phpcs_global_bin or $phpcs_local_exec"
+                exit 1
+            fi
+        fi
+    fi
+
+    if ! hash phpcbf 2>/dev/null; then
+        message_warning "No valid PHP Code Beautifier executable found! Please have one available as either [phpcbf]."
+        message_info "Visit: https://github.com/squizlabs/PHP_CodeSniffer/wiki/Fixing-Errors-Automatically"
+        exit 1
+    fi
+
+    # Arguments both for use for PHPCS and for PHPCBF.
+    php_cs_cfb_common_arguments="--standard=PSR2 --colors --error-severity=1 --ignore='*blade.php*,*twig.php*' --tab-width=4 --encoding=utf-8 --extensions=php -d memory_limit=32M -n"
+
+    # Only PHPCS exclusives arguments.
+    phpcs_arguments="-s --report=full --report-width=auto"
+
+    # Check for errors when running PHPCS.
+    phpcs_errors=false
+
+    echo "${color_bold_black}${color_background_yellow}PHP CodeSniffer Arguments${color_reset} ${color_bold_yellow}${php_cs_cfb_common_arguments} ${phpcs_arguments}${color_reset}"
+    echo
+    echo "${color_bold_black}${color_background_yellow}Use PHPCBF To Fix Problems${color_reset} ${color_bold_green}phpcbf${color_reset}${color_bold_yellow} ${php_cs_cfb_common_arguments} ${color_bold_purple}{FILES OR FOLDER}${color_reset}"
+    echo
+
+    for file in $files; do
+
+        # Error codes before applying PHPCBF.
+        phpcs_codestyle_errors_before_autofix=$($phpcs_bin $php_cs_cfb_common_arguments $phpcs_arguments $file)
+
+        # ([-z]=Empty)
+        if [ -z "$phpcs_codestyle_errors_before_autofix" ];
+        then
+            # No errors to fix, skip to next file.
+            continue
+        fi
+
+        # Run PHP Code Beautifier and Fixer the file.
+        # Begin PHP Code Beautifier and Fixer.
+        phpcbf_output="$(phpcbf $php_cs_cfb_common_arguments $file)"
+
+        if [ -n "$phpcbf_output" ]; then
+            # File had some issues but they were automatically fixed.
+            echo "${color_bold_green}Codestyle errors were fixed automatically! add those changes and commit again.${color_reset}"
+            # Display PHPCBF filtered output.
+            echo "$phpcbf_output"
+        fi
+
+        # Run PHP Code Style Check and detect in the fixer was not able to fix code.
+        phpcs_codestyle_errors="$($phpcs_bin $php_cs_cfb_common_arguments $phpcs_arguments $file)"
+
+        # If it did contain errors, we have output.
+        # Check last command (PHPCS) code for fail.
+        # ([-n]=Not Empty)
+        if [ -n "$phpcs_codestyle_errors" ]; then
+
+            # Display error and PHPCS filtered output.
+            # Display processing file error.
+            echo "$phpcs_codestyle_errors"
+
+            # Adding error message.
+            errors=("${errors[@]}" "$output")
+
+            phpcs_errors=true
+        fi
+    done
+
+    if [ "$phpcs_errors" = false ]; then
+        message_success 'No Errors Found - PHP CodeSniffer + PHP Code Beautifier'
+    fi
+
+    echo
+    echo "╭─────────────────────────────────────────────────╮"
+    echo "|〈〈〈 ${color_bold_white}PHP Coding Standards Fixer(PSR2)...${color_reset} 〉〉〉|"
+    echo "╰─────────────────────────────────────────────────╯"
+    echo
+
+    message_info "Running PHP Code Sniffer..."
+
+    # Verificando se arquivo binário executável existe para [php-cs-fixer].
+    if ! hash php-cs-fixer 2>/dev/null; then
+        message_warning "No valid PHP Coding Standards Fixer executable found! Please have one available as either ✖✖✖ php-cs-fixer ✖✖✖"
+        message_info "Visit: https://github.com/FriendsOfPHP/PHP-CS-Fixer#installation"
+        exit 1
+    fi
+
+    echo "${color_bold_yellow}✔︎ Rules: PSR2, Symfony${color_reset}"
+    echo "${color_bold_yellow}✔︎ Using Cache: No${color_reset}"
+    echo "${color_bold_yellow}✔︎ Output Format: Text(default)${color_reset}"
+    echo
+
+    git status --porcelain | grep -e '^[AM]\(.*\).php$' | cut -c 3- | while read line; do
+        # php-cs-fixer CHECK.
+        # --dry-run (The --dry-run option displays the files that need to be fixed but without actually modifying them).
+        php_cs_fixer_codestyle_dry_run=`php-cs-fixer --dry-run --diff --verbose --using-cache=no --rules=@PSR2,@Symfony fix ${line} 2>&1 | grep "diff"`
+
+        # Check last command (PHP-CS-FIXER) code for fixed.
+        if [ -n "$php_cs_fixer_codestyle_dry_run" ]; then
+
+            # Applicando PSRs e @Symfony.
+            php_cs_fixer_codestyle=`php-cs-fixer --diff --using-cache=no --rules=@PSR2,@Symfony fix ${line} &>/dev/null`
+
+            git add ${line}
+
+            message_info "GIT ADD + PHP Coding Standards Fixer fixing: [ ${line} ]"
+        else
+            echo "${color_bold_yellow}File already ${color_background_yellow}${color_bold_black}FIXED${color_reset}${color_bold_yellow} and also already added to the ${color_background_yellow}${color_bold_black}GIT${color_reset} ➨ ${color_bold_white}${color_underline_white}${line}${color_reset}"
+        fi
+    done
+
+    echo
+    echo "╭──────────────────────────────────────────╮"
+    echo "|〈〈〈 ${color_bold_white}PHPMD - PHP Mess Detector...${color_reset} 〉〉〉|"
+    echo "╰──────────────────────────────────────────╯"
+    echo
+
+    if ! hash phpmd 2>/dev/null; then
+        message_warning "No valid PHP Mess Detector executable found! Please have one available as either ✖✖✖ phpmd ✖✖✖"
+        message_info "Visit: https://phpmd.org/download/index.html"
+        exit 1
+    fi
+
+    # @see https://phpmd.org/rules/index.html
+    phpmd_rules="cleancode,codesize,controversial,design,naming,unusedcode"
+
+    echo "✔︎ Report Format: ${color_bold_yellow}text${color_reset}"
+    echo "✔︎ Ruleset Files: ${color_bold_yellow}${phpmd_rules}${color_reset}"
+    echo "✔︎ Suffixes: ${color_bold_yellow}php${color_reset}"
+    echo
+
+    message_info "PHPMD - PHP Mess Detector: [ ${staged_files_separated_by_comma} ]"
+
+    # PHPMD running script
+    phpmd_output=$(phpmd ${staged_files_separated_by_comma} text "${phpmd_rules}" --suffixes php)
+    phpmd_retval=$?
+
+    if [ $phpmd_retval -ne 0 ]; then
+        echo
+        message_failure "PHPMD - PHP Mess Detector found some errors. Fix the errors before commit."
+
+        echo "$phpmd_output"
+
+        # Adding error message.
+        errors=("${errors[@]}" "$phpmd_output")
+    else
+        echo
+        message_success "✔ No PHPMD errors found!"
+    fi
+
+    echo
+    echo "╭─────────────────────────────────────────────────╮"
+    echo "|〈〈〈 ${color_bold_white}PHP Copy/Paste Detector (PHPCPD)...${color_reset} 〉〉〉|"
+    echo "╰─────────────────────────────────────────────────╯"
+    echo
+
+    if ! hash phpcpd 2>/dev/null; then
+        message_warning "No valid PHP Copy/Paste Detector executable found! Please have one available as either ✖✖✖ phpcpd ✖✖✖"
+        echo "${color_bold_white}Please install phpcpd, e.g.:${color_reset}"
+        echo "${color_bold_green}composer global require --dev 'sebastian/phpcpd=*'${color_reset}"
+        exit 1
+    fi
+
+    phpcpd_arguments="--no-interaction --progress --min-lines=3 --min-tokens=40"
+
+    message_info "PHPCPD - PHP Copy/Paste Detector: [ ${staged_files_separated_by_spaces} ]"
+
+    # PHPCPD running script
+    phpcpd_tmp=/tmp/t$$
+    phpcpd ${phpcpd_arguments} ${staged_files_separated_by_spaces} > $phpcpd_tmp
+
+    if grep -q 'Found' $phpcpd_tmp
+    then
+        echo
+        echo
+        message_failure "PHPCPD - PHP Copy/Paste Detector found some errors. Fix the errors before commit."
+
+        echo
+        echo
+        phpcpd_output="`cat $phpcpd_tmp`"
+
+        echo "$phpcpd_output"
+
+        # Adding error message.
+        errors=("${errors[@]}" "$phpcpd_output")
+    else
+        echo
+        message_success "✔ No PHPCPD errors found!"
+    fi
+
+    # Cleanup
+    rm /tmp/*.$$ 2>/dev/null
+    rm /tmp/*$$.txt 2>/dev/null
+    rm -f $phpcpd_tmp
+
+fi
+
+echo
+
+# If we have errors, exit with 1
+if [ -n "$errors" ]; then
+    message_failure 'Please check the terminal output and solve the errors!'
+    exit 1
+fi
+
+message_success 'No Errors Found 👏 👏 👏 👏 '
+
+exit 0
