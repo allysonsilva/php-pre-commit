@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/usr/bin/env bash
 
 ##########
 # Git Pre-Commit file for PHP projects.
@@ -11,8 +11,8 @@
 #   - PHP Mess Detector (PHPMD) (https://phpmd.org/)
 #   - PHP Copy/Paste Detector (PHPCPD) (https://github.com/sebastianbergmann/phpcpd)
 #
-# @version 1.0.0
-# @author Allyson Silva <contato@allyson.tech>
+# @version 1.0.1
+# @author Allyson Silva <allysonsilvaweb@gmail.com>
 ##########
 
     cat <<\EOF
@@ -126,19 +126,19 @@ color_reset='\033[0m'
 ###########
 
 function message_failure() {
-    echo "${color_bold_white}${color_background_red} 🤦  $1 ${color_reset}\n"
+    printf "${color_bold_white}${color_background_red} 🤦  $1 ${color_reset}\n"
 }
 
 function message_success() {
-    echo "${color_bold_black}${color_background_green} $1 🍺  ${color_reset}\n"
+    printf "${color_bold_black}${color_background_green} $1 🍺  ${color_reset}\n"
 }
 
 function message_warning() {
-    echo "${color_bold_black}${color_background_yellow} ☹  $1 ${color_reset}\n"
+    printf "${color_bold_black}${color_background_yellow} ☹  $1 ${color_reset}\n"
 }
 
 function message_info() {
-    echo "${color_bold_black}${color_background_blue} ☝️️  $1 ${color_reset}\n"
+    printf "${color_bold_black}${color_background_blue} ☝️️  $1 ${color_reset}\n"
 }
 
 ######################
@@ -179,7 +179,7 @@ staged_files_separated_by_comma=${staged_files// /,}
 if [ -n "$files" ]; then
 
     echo "╭──────────────────────────────────╮"
-    echo "|〈〈〈 ${color_bold_white}Checking PHP Lint...${color_reset} 〉〉〉|"
+    printf "|〈〈〈 ${color_bold_white}Checking PHP Lint...${color_reset} 〉〉〉|\n"
     echo "╰──────────────────────────────────╯"
     echo
 
@@ -210,7 +210,7 @@ if [ -n "$files" ]; then
     fi
 
     echo "╭────────────────────────────────────────────────────────────────────────────────╮"
-    echo "|〈〈〈 ${color_bold_white}Running PHP CodeSniffer + PHP Code Beautifier. Code standard PSR2.${color_reset} 〉〉〉|"
+    printf "|〈〈〈 ${color_bold_white}Running PHP CodeSniffer + PHP Code Beautifier. Code standard PSR2.${color_reset} 〉〉〉|\n"
     echo "╰────────────────────────────────────────────────────────────────────────────────╯"
     echo
 
@@ -239,6 +239,7 @@ if [ -n "$files" ]; then
                 phpcs_bin=$phpcs_bin
             else
                 message_warning "No valid PHP Codesniffer executable found! Please have one available as either $phpcs_vendor_bin, $phpcs_global_bin or $phpcs_local_exec"
+                echo
                 exit 1
             fi
         fi
@@ -247,6 +248,7 @@ if [ -n "$files" ]; then
     if ! hash phpcbf 2>/dev/null; then
         message_warning "No valid PHP Code Beautifier executable found! Please have one available as either [phpcbf]."
         message_info "Visit: https://github.com/squizlabs/PHP_CodeSniffer/wiki/Fixing-Errors-Automatically"
+        echo
         exit 1
     fi
 
@@ -259,9 +261,9 @@ if [ -n "$files" ]; then
     # Check for errors when running PHPCS.
     phpcs_errors=false
 
-    echo "${color_bold_black}${color_background_yellow}PHP CodeSniffer Arguments${color_reset} ${color_bold_yellow}${php_cs_cfb_common_arguments} ${phpcs_arguments}${color_reset}"
+    printf "${color_bold_black}${color_background_yellow}PHP CodeSniffer Arguments${color_reset} ${color_bold_yellow}${php_cs_cfb_common_arguments} ${phpcs_arguments}${color_reset}\n"
     echo
-    echo "${color_bold_black}${color_background_yellow}Use PHPCBF To Fix Problems${color_reset} ${color_bold_green}phpcbf${color_reset}${color_bold_yellow} ${php_cs_cfb_common_arguments} ${color_bold_purple}{FILES OR FOLDER}${color_reset}"
+    printf "${color_bold_black}${color_background_yellow}Use PHPCBF To Fix Problems${color_reset} ${color_bold_green}phpcbf${color_reset}${color_bold_yellow} ${php_cs_cfb_common_arguments} ${color_bold_purple}{FILES OR FOLDER}${color_reset}\n"
     echo
 
     for file in $files; do
@@ -282,9 +284,9 @@ if [ -n "$files" ]; then
 
         if [ -n "$phpcbf_output" ]; then
             # File had some issues but they were automatically fixed.
-            echo "${color_bold_green}Codestyle errors were fixed automatically! add those changes and commit again.${color_reset}"
+            printf "${color_bold_green}Codestyle errors were fixed automatically! add those changes and commit again.${color_reset}\n"
             # Display PHPCBF filtered output.
-            echo "$phpcbf_output"
+            printf "${phpcbf_output}\n"
         fi
 
         # Run PHP Code Style Check and detect in the fixer was not able to fix code.
@@ -297,7 +299,7 @@ if [ -n "$files" ]; then
 
             # Display error and PHPCS filtered output.
             # Display processing file error.
-            echo "$phpcs_codestyle_errors"
+            printf "${phpcs_codestyle_errors}\n"
 
             # Adding error message.
             errors=("${errors[@]}" "$output")
@@ -308,26 +310,29 @@ if [ -n "$files" ]; then
 
     if [ "$phpcs_errors" = false ]; then
         message_success 'No Errors Found - PHP CodeSniffer + PHP Code Beautifier'
+        echo
     fi
 
     echo
     echo "╭─────────────────────────────────────────────────╮"
-    echo "|〈〈〈 ${color_bold_white}PHP Coding Standards Fixer(PSR2)...${color_reset} 〉〉〉|"
+    printf "|〈〈〈 ${color_bold_white}PHP Coding Standards Fixer(PSR2)...${color_reset} 〉〉〉|\n"
     echo "╰─────────────────────────────────────────────────╯"
     echo
 
     message_info "Running PHP Code Sniffer..."
+    echo
 
     # Verificando se arquivo binário executável existe para [php-cs-fixer].
     if ! hash php-cs-fixer 2>/dev/null; then
         message_warning "No valid PHP Coding Standards Fixer executable found! Please have one available as either ✖✖✖ php-cs-fixer ✖✖✖"
         message_info "Visit: https://github.com/FriendsOfPHP/PHP-CS-Fixer#installation"
+        echo
         exit 1
     fi
 
-    echo "${color_bold_yellow}✔︎ Rules: PSR2, Symfony${color_reset}"
-    echo "${color_bold_yellow}✔︎ Using Cache: No${color_reset}"
-    echo "${color_bold_yellow}✔︎ Output Format: Text(default)${color_reset}"
+    printf "${color_bold_yellow}✔︎ Rules: PSR2, Symfony${color_reset}\n"
+    printf "${color_bold_yellow}✔︎ Using Cache: No${color_reset}\n"
+    printf "${color_bold_yellow}✔︎ Output Format: Text(default)${color_reset}\n"
     echo
 
     git status --porcelain | grep -e '^[AM]\(.*\).php$' | cut -c 3- | while read line; do
@@ -345,28 +350,29 @@ if [ -n "$files" ]; then
 
             message_info "GIT ADD + PHP Coding Standards Fixer fixing: [ ${line} ]"
         else
-            echo "${color_bold_yellow}File already ${color_background_yellow}${color_bold_black}FIXED${color_reset}${color_bold_yellow} and also already added to the ${color_background_yellow}${color_bold_black}GIT${color_reset} ➨ ${color_bold_white}${color_underline_white}${line}${color_reset}"
+            printf "${color_bold_yellow}File already ${color_background_yellow}${color_bold_black}FIXED${color_reset}${color_bold_yellow} and also already added to the ${color_background_yellow}${color_bold_black}GIT${color_reset} ➨ ${color_bold_white}${color_underline_white}${line}${color_reset}\n"
         fi
     done
 
     echo
     echo "╭──────────────────────────────────────────╮"
-    echo "|〈〈〈 ${color_bold_white}PHPMD - PHP Mess Detector...${color_reset} 〉〉〉|"
+    printf "|〈〈〈 ${color_bold_white}PHPMD - PHP Mess Detector...${color_reset} 〉〉〉|\n"
     echo "╰──────────────────────────────────────────╯"
     echo
 
     if ! hash phpmd 2>/dev/null; then
         message_warning "No valid PHP Mess Detector executable found! Please have one available as either ✖✖✖ phpmd ✖✖✖"
         message_info "Visit: https://phpmd.org/download/index.html"
+        echo
         exit 1
     fi
 
     # @see https://phpmd.org/rules/index.html
     phpmd_rules="cleancode,codesize,controversial,design,naming,unusedcode"
 
-    echo "✔︎ Report Format: ${color_bold_yellow}text${color_reset}"
-    echo "✔︎ Ruleset Files: ${color_bold_yellow}${phpmd_rules}${color_reset}"
-    echo "✔︎ Suffixes: ${color_bold_yellow}php${color_reset}"
+    printf "✔︎ Report Format: ${color_bold_yellow}text${color_reset}\n"
+    printf "✔︎ Ruleset Files: ${color_bold_yellow}${phpmd_rules}${color_reset}\n"
+    printf "✔︎ Suffixes: ${color_bold_yellow}php${color_reset}\n"
     echo
 
     message_info "PHPMD - PHP Mess Detector: [ ${staged_files_separated_by_comma} ]"
@@ -379,7 +385,7 @@ if [ -n "$files" ]; then
         echo
         message_failure "PHPMD - PHP Mess Detector found some errors. Fix the errors before commit."
 
-        echo "$phpmd_output"
+        printf "${phpmd_output}\n"
 
         # Adding error message.
         errors=("${errors[@]}" "$phpmd_output")
@@ -390,14 +396,15 @@ if [ -n "$files" ]; then
 
     echo
     echo "╭─────────────────────────────────────────────────╮"
-    echo "|〈〈〈 ${color_bold_white}PHP Copy/Paste Detector (PHPCPD)...${color_reset} 〉〉〉|"
+    printf "|〈〈〈 ${color_bold_white}PHP Copy/Paste Detector (PHPCPD)...${color_reset} 〉〉〉|\n"
     echo "╰─────────────────────────────────────────────────╯"
     echo
 
     if ! hash phpcpd 2>/dev/null; then
         message_warning "No valid PHP Copy/Paste Detector executable found! Please have one available as either ✖✖✖ phpcpd ✖✖✖"
-        echo "${color_bold_white}Please install phpcpd, e.g.:${color_reset}"
-        echo "${color_bold_green}composer global require --dev 'sebastian/phpcpd=*'${color_reset}"
+        printf "${color_bold_white}Please install phpcpd, e.g.:${color_reset}\n"
+        printf "${color_bold_green}composer global require --dev 'sebastian/phpcpd=*'${color_reset}\n"
+        echo
         exit 1
     fi
 
@@ -419,7 +426,7 @@ if [ -n "$files" ]; then
         echo
         phpcpd_output="`cat $phpcpd_tmp`"
 
-        echo "$phpcpd_output"
+        printf "${phpcpd_output}\n"
 
         # Adding error message.
         errors=("${errors[@]}" "$phpcpd_output")
