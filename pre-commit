@@ -134,7 +134,7 @@ function message_success() {
 }
 
 function message_warning() {
-    printf "${color_bold_black}${color_background_yellow} ☹  $1 ${color_reset}\n"
+    printf "${color_bold_black}${color_background_yellow} ⚠️ $1 ${color_reset}\n"
 }
 
 function message_info() {
