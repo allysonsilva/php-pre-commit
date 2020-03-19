@@ -253,7 +253,7 @@ if [ -n "$files" ]; then
     fi
 
     # Arguments both for use for PHPCS and for PHPCBF.
-    php_cs_cfb_common_arguments="--standard=PSR2 --colors --error-severity=1 --ignore='*blade.php*,*twig.php*' --tab-width=4 --encoding=utf-8 --extensions=php -d memory_limit=32M -n"
+    php_cs_cbf_common_arguments="--standard=PSR2 --colors --error-severity=1 --ignore='*blade.php*,*twig.php*' --tab-width=4 --encoding=utf-8 --extensions=php -d memory_limit=32M -n"
 
     # Only PHPCS exclusives arguments.
     phpcs_arguments="-s --report=full --report-width=auto"
@@ -261,15 +261,15 @@ if [ -n "$files" ]; then
     # Check for errors when running PHPCS.
     phpcs_errors=false
 
-    printf "${color_bold_black}${color_background_yellow}PHP CodeSniffer Arguments${color_reset} ${color_bold_yellow}${php_cs_cfb_common_arguments} ${phpcs_arguments}${color_reset}\n"
+    printf "${color_bold_black}${color_background_yellow}PHP CodeSniffer Arguments${color_reset} ${color_bold_yellow}${php_cs_cbf_common_arguments} ${phpcs_arguments}${color_reset}\n"
     echo
-    printf "${color_bold_black}${color_background_yellow}Use PHPCBF To Fix Problems${color_reset} ${color_bold_green}phpcbf${color_reset}${color_bold_yellow} ${php_cs_cfb_common_arguments} ${color_bold_purple}{FILES OR FOLDER}${color_reset}\n"
+    printf "${color_bold_black}${color_background_yellow}Use PHPCBF To Fix Problems${color_reset} ${color_bold_green}phpcbf${color_reset}${color_bold_yellow} ${php_cs_cbf_common_arguments} ${color_bold_purple}{FILES OR FOLDER}${color_reset}\n"
     echo
 
     for file in $files; do
 
         # Error codes before applying PHPCBF.
-        phpcs_codestyle_errors_before_autofix=$($phpcs_bin $php_cs_cfb_common_arguments $phpcs_arguments $file)
+        phpcs_codestyle_errors_before_autofix=$($phpcs_bin $php_cs_cbf_common_arguments $phpcs_arguments $file)
 
         # ([-z]=Empty)
         if [ -z "$phpcs_codestyle_errors_before_autofix" ];
@@ -280,7 +280,7 @@ if [ -n "$files" ]; then
 
         # Run PHP Code Beautifier and Fixer the file.
         # Begin PHP Code Beautifier and Fixer.
-        phpcbf_output="$(phpcbf $php_cs_cfb_common_arguments $file)"
+        phpcbf_output="$(phpcbf $php_cs_cbf_common_arguments $file)"
 
         if [ -n "$phpcbf_output" ]; then
             # File had some issues but they were automatically fixed.
@@ -290,7 +290,7 @@ if [ -n "$files" ]; then
         fi
 
         # Run PHP Code Style Check and detect in the fixer was not able to fix code.
-        phpcs_codestyle_errors="$($phpcs_bin $php_cs_cfb_common_arguments $phpcs_arguments $file)"
+        phpcs_codestyle_errors="$($phpcs_bin $php_cs_cbf_common_arguments $phpcs_arguments $file)"
 
         # If it did contain errors, we have output.
         # Check last command (PHPCS) code for fail.
